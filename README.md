@@ -8,3 +8,6 @@ In a "fresh" python-installation, you can run the following commands to install 
 - `pip install numpy`
 - `pip install pyqt5`
 - `pip install matplotlib`
+
+
+(also sorry for missing commenting...)
