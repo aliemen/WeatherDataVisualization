@@ -88,6 +88,10 @@ class weather_object(object):
                                 time_format=self._time_format)
         return new_wo
     
+    def _apply_func_to_value(self, value_key: str, function: callable):
+        value = self.__getitem__(value_key) # raises exception if key not correct
+        self._data_points[value_key] = function(value)
+    
         
     def __getitem__(self, key):
         assert key in self._data_names, "keyword must be a valid data-name-entry"

@@ -165,7 +165,7 @@
      </rect>
     </property>
     <property name="toolTip">
-     <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Gibt das Format der Zeitachsen-Beschriftung im Plot an.&lt;/p&gt;&lt;p&gt;Wenn Sie sich nicht sicher sind, was das bedeutet: NICHT ändern!&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+     <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Gibt das Format der Zeitachsen-Beschriftung im Plot an.&lt;/p&gt;&lt;p&gt;Formatierungscodes:&lt;br/&gt;%a/%A	- Wochetagsnname&lt;br/&gt;%d	- Monatstageszahl&lt;br/&gt;%b/%B	- Monatsname&lt;br/&gt;%m	- Monatszahl&lt;br/&gt;%y/%Y	- Jahreszahl&lt;br/&gt;%H	- Zeitstunde (24h)&lt;br/&gt;%I	- Zeitstunde (12h)&lt;br/&gt;%M	- Minuten&lt;br/&gt;%S	- Sekunden&lt;br/&gt;%j/%-j	- Tag im Jahr&lt;br/&gt;%U/%W	- Woche im Jahr (von So/Mo)&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
     </property>
     <property name="text">
      <string>%d.%m.%Y</string>
@@ -211,7 +211,7 @@
      <string>Zwei Achsen</string>
     </property>
    </widget>
-   <widget class="QListWidget" name="listWidgetYAxis">
+   <widget class="QListView" name="listViewYAxis">
     <property name="geometry">
      <rect>
       <x>10</x>
@@ -225,6 +225,9 @@
     </property>
     <property name="selectionMode">
      <enum>QAbstractItemView::MultiSelection</enum>
+    </property>
+    <property name="viewMode">
+     <enum>QListView::ListMode</enum>
     </property>
    </widget>
    <widget class="QLabel" name="label_6">
@@ -256,7 +259,7 @@
      <string>Plotte auf zweiter y-Achse</string>
     </property>
    </widget>
-   <widget class="QListWidget" name="listWidgetSecYAxis">
+   <widget class="QListView" name="listViewSecYAxis">
     <property name="enabled">
      <bool>true</bool>
     </property>
@@ -273,6 +276,35 @@
     </property>
     <property name="selectionMode">
      <enum>QAbstractItemView::MultiSelection</enum>
+    </property>
+   </widget>
+   <widget class="QLabel" name="label_7">
+    <property name="geometry">
+     <rect>
+      <x>290</x>
+      <y>320</y>
+      <width>101</width>
+      <height>22</height>
+     </rect>
+    </property>
+    <property name="text">
+     <string>Interpolationsgrad:</string>
+    </property>
+   </widget>
+   <widget class="QSpinBox" name="spinBoxInterpDegree">
+    <property name="geometry">
+     <rect>
+      <x>390</x>
+      <y>320</y>
+      <width>42</width>
+      <height>22</height>
+     </rect>
+    </property>
+    <property name="minimum">
+     <number>1</number>
+    </property>
+    <property name="maximum">
+     <number>15</number>
     </property>
    </widget>
   </widget>
@@ -295,6 +327,13 @@
     <property name="title">
      <string>Hilfe</string>
     </property>
+    <widget class="QMenu" name="menuInformationen">
+     <property name="title">
+      <string>Informationen</string>
+     </property>
+     <addaction name="actionZeitachsen_Beschriftung"/>
+    </widget>
+    <addaction name="menuInformationen"/>
     <addaction name="actionLink_zu_GitHub"/>
     <addaction name="action_ber"/>
    </widget>
@@ -315,6 +354,11 @@
   <action name="action_ber">
    <property name="text">
     <string>Über</string>
+   </property>
+  </action>
+  <action name="actionZeitachsen_Beschriftung">
+   <property name="text">
+    <string>Zeitachsen-Beschriftung</string>
    </property>
   </action>
  </widget>

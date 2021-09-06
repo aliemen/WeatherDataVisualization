@@ -37,12 +37,18 @@ class weather_wrapper(object):
         for filename in file_names:
             with open(directory + filename) as file:
                 lines = [line.rstrip() for line in file]
+                one_file_data = []
+                
                 for i, line in enumerate(lines):
                     if i == 0:
+                        first_line = line
                         continue
                     
                     tmp_object = wo(line, separator, data_names, time_format=time_format)
-                    tmp_data.append(tmp_object)
+                    one_file_data.append(tmp_object)
+                
+                one_file_data = convert_to_std_units(one_file_data, first_line, separator=separator) # ex: km/h should be converted to m/s
+                tmp_data += one_file_data
                     
         return array(tmp_data)
     
@@ -54,6 +60,7 @@ class weather_wrapper(object):
         if not directory.endswith("/"): directory += "/"
         
         self._data = self._get_data(file_endings, separator, directory, data_names, time_format)
+        
         if remove_duplicates: 
             assert sort_elements, "if duplicates should get removed, array must be sorted"
             self._data = unique(self._data)
@@ -65,7 +72,8 @@ class weather_wrapper(object):
     def size(self):
         return len(self._data)
     
-    def subscript_data(self, index_strings, start_date=datetime(2000, 1, 1), end_date=datetime(3000, 12, 31), include_labeling=True):
+    def subscript_data(self, index_strings, start_date=datetime(2000, 1, 1), end_date=datetime(3000, 12, 31),
+                       include_labeling=True, for_interpolation=False):
         
         start_index, stop_index = self._get_indizes(start_date, end_date)
         
@@ -75,7 +83,7 @@ class weather_wrapper(object):
             return_array.append(tmp_data_entries)
             
         if include_labeling:
-            return array(return_array), self._get_labels(index_strings)
+            return array(return_array), self._get_labels(index_strings, for_interpolation=for_interpolation)
         else:
             return array(return_array)
         
@@ -95,6 +103,9 @@ class weather_wrapper(object):
         
         ret_keys = []
         for label in labels:
+            #if for_interp:
+                #ret_keys.append("Ausgleichspolynom: " + key_from_value(self._default_names, label))
+            #else:
             ret_keys.append(key_from_value(self._default_names, label))
         
         return ret_keys
@@ -106,14 +117,18 @@ class weather_wrapper(object):
     
     ### ---- Helper Methods ----- ###
     
-    def _get_labels(self, index_strings):
+    def _get_labels(self, index_strings, for_interpolation=False):
+        
+        interpolation_suffix = ""
+        if for_interpolation:
+            interpolation_suffix = "Ausgleichspolynom: "
         
         return_labels = []
         for label in index_strings:
             if label in self._default_names:
-                return_labels.append(self._default_names[label])
+                return_labels.append(interpolation_suffix + self._default_names[label])
             else:
-                return_labels.append(label)
+                return_labels.append(interpolation_suffix + label)
                 
         return return_labels
     
@@ -155,12 +170,37 @@ class weather_wrapper(object):
     
 
 ### Sonstige Methoden zur Datenverarbeitung ###
-from numpy import polyval, polyfit
+from numpy import polyval, polyfit, array, isfinite, sort, flip
 
-def do_polyval(times, data, degree=1): # übergebe auf erster Achse die Zeitobjekte, auf der zweiten die zu fittenden Daten
+def remove_indizes_from_list(value_list: list, rm_list):
+    
+    value_list = array(value_list).tolist()
+    
+    reversed_sorted_indizes = flip(sort(rm_list))
+    for index in reversed_sorted_indizes:
+        value_list.pop(index)
+        
+    return array(value_list)
+    
+def clear_nan_values(x_data, y_data):
+    # clears nan values in y_data
+    
+    nan_indizes = []
+    tmp_ar = array(y_data.copy(), dtype=float)
+    
+    for i in range(tmp_ar.shape[0]):
+        if not isfinite([tmp_ar[i]]):
+            nan_indizes.append(i)
+            
+    return remove_indizes_from_list(x_data, nan_indizes), remove_indizes_from_list(y_data, nan_indizes)
+    
+
+def do_polyval(times: list, data: list, degree=1): # übergebe auf erster Achse die Zeitobjekte, auf der zweiten die zu fittenden Daten
 
     starting_time = times[0]
     seconds_per_day = 86400
+    
+    times, data = clear_nan_values(times, data)
     
     time_as_timestamp = array([(times[i]-starting_time).total_seconds() / seconds_per_day for i in range(times.shape[0])], dtype="float")
     data = array(data, dtype="float")
@@ -168,10 +208,79 @@ def do_polyval(times, data, degree=1): # übergebe auf erster Achse die Zeitobje
     fit_constants = polyfit(time_as_timestamp, data, degree)
     ret_eval = polyval(fit_constants, time_as_timestamp)
     
-    return ret_eval
+    return times, ret_eval
     
     
     
+    
+### more helper methods ###
+def get_conversion_function(current_unit: str, desired_unit: str):
+    if current_unit == desired_unit:
+        print("Warning: returning \"no conversion\" (should not happen normally)!")
+        return lambda x: x # nothing happens (this case should not occur)
+    
+    if current_unit=="km/h":
+        if desired_unit=="m/s":
+            return lambda x: x / 3.6
+    if current_unit=="m/s":
+        if desired_unit=="km/h":
+            return lambda x: x * 3.6
+    if current_unit=="mm":
+        if desired_unit=="m":
+            return lambda x: x / 1000.0
+    if current_unit=="m":
+        if desired_unit=="mm":
+            return lambda x: x * 1000.0
+    
+    print(f"Error: desired conversion ({current_unit}->{desired_unit}) not available, returning identity function!")
+    return lambda x: x
+        
+def apply_function_to_all_values(values: list, value_key: str, function: callable):
+    for i in range(len(values)):
+        values[i]._apply_func_to_value(value_key, function)
+    return values
+
+def convert_to_std_units(values: list, first_line: str, separator=";"):
+    standard_units = {"No": "No",
+                      "Time": "Zeit",
+                      "MeasureInterval": "mi",
+                      "HumidityInside": "%",
+                      "TemperatureInside": "°C",
+                      "HumidityOutside": "%",
+                      "TemperatureOutside": "°C",
+                      "PressureAbsolute": "Hpa",
+                      "WindSpeed": "m/s",
+                      "WindGustSpeed": "m/s",
+                      "WindDirection": "Richtung",
+                      "PressureRelative": "Hpa",
+                      "DewPoint": "°C",
+                      "WindChill": "°C",
+                      "RainfallHourly": "mm",
+                      "RainfallDaily": "mm",
+                      "RainfallWeekly": "mm",
+                      "RainfallMonthly": "mm",
+                      "RainfallTotal": "mm",
+                      "WindLevel": "bft",
+                      "WindGustLevel": "bft"}
+    
+    used_units = first_line.split(separator)
+    for i, title in enumerate(used_units):
+        if not "(" in title:
+            continue
+        from_index = title.rindex("(") + 1
+        used_units[i] = title[from_index:-1]
+    
+    tmp_data_names = values[0]._data_names # to iterate through data names and find the right key
+    
+    for _used, value_key in zip(used_units, tmp_data_names):
+        _desired = standard_units[value_key]
+        if _used == _desired:
+            continue
+        
+        conversion_function = get_conversion_function(_used, _desired)
+        values = apply_function_to_all_values(values, value_key, conversion_function) # lieber doppelt gemoppelt zugewiesen...
+    
+    return values
     
     
     
