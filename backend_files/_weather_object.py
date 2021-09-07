@@ -24,21 +24,6 @@ class weather_object(object):
                    "RainfallTotal",
                    "WindLevel",
                    "WindGustLevel"]
-    
-    def get_instance(self, value_name):
-        datetime_value = ["Time"]
-        string_value = ["WindDirection"]
-        int_value = ["No"]
-        # Otherwise, convert to float!
-        
-        if value_name in string_value:
-            return str
-        if value_name in int_value:
-            return int
-        if value_name in datetime_value:
-            return lambda time_str: datetime.strptime(time_str, self._time_format)
-        
-        return float
             
             
     
@@ -53,10 +38,12 @@ class weather_object(object):
         
         assert isinstance(data_string, str), "data_string must be of type string"
         
-        if time_format==None:
-            self._time_format = "%d-%m-%Y %H:%M"
-        else:
-            self._time_format = time_format
+        
+        possible_time_formats = ["%d-%m-%Y %H:%M",
+                                 "%d.%m.%Y %H:%M:%S"] # depending on the version, there are two different possible time formats!
+        if not time_format==None:
+            possible_time_formats = [time_format] + possible_time_formats
+            
         if not data_names==None: self._data_names = data_names
         self._separator = separator
         self._no_value_key = no_value_key
@@ -64,18 +51,22 @@ class weather_object(object):
         
         tmp_data_string = data_string.split(self._separator)
         
+        self._time_format = self._get_valid_time_format(possible_time_formats, tmp_data_string[1]) # Time is in second place!
+        
+        max_size = len(tmp_data_string)
         ### Import Parameters... ###
         for index, value in enumerate(self._data_names):
+            
+            if index >= max_size: # in this case, "windlevel" didn't get recorded!
+                self._data_points[value] = None
+                continue
             
             index_data = tmp_data_string[index]
             
             if index_data == self._no_value_key:
                 self._data_points[value] = None
             else:
-                convert_to_instance = self.get_instance(value)
-                #print(index_data)
-                #if index_data == None: print(data_names)
-                #if index_data==None: print(tmp_data_string)
+                convert_to_instance = self._get_instance(value)
                 
                 self._data_points[value] = convert_to_instance(index_data)
         ### -------------------- ###
@@ -146,8 +137,35 @@ class weather_object(object):
         return self._data_points["Time"] >= self._check_input(other)
         
         
+    ### helper functions ###
+    
+    def _get_valid_time_format(self, time_formats, time_string):
+        def is_valid_format(format_str): # returns if given format is valid for given text
+            try: datetime.strptime(time_string, format_str)
+            except ValueError: return False
+            return True
         
+        for time_format in time_formats:
+            if is_valid_format(time_format):
+                return time_format
+            
+        print("Error: No time-format found to save time-stamps!")
+        raise RuntimeError("Unknown data format, should be for example \"%d.%m.%Y %H:%M:%S\"!")
+    
+    def _get_instance(self, value_name):
+        datetime_value = ["Time"]
+        string_value = ["WindDirection"]
+        int_value = ["No"]
+        # Otherwise, convert to float!
         
+        if value_name in string_value:
+            return str
+        if value_name in int_value:
+            return int
+        if value_name in datetime_value:
+            return lambda time_str: datetime.strptime(time_str, self._time_format)
+        
+        return float
         
     
     

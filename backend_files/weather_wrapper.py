@@ -1,8 +1,9 @@
-#from _weather_object import weather_object as wo
 from backend_files._weather_object import weather_object as wo
 from os import walk
-from numpy import array, sort, unique
 from datetime import datetime
+
+from numpy import array, sort, unique
+from numpy import polyval, polyfit, isfinite, flip # für "Sonstiges"
 
 
 class weather_wrapper(object):
@@ -42,6 +43,8 @@ class weather_wrapper(object):
                 for i, line in enumerate(lines):
                     if i == 0:
                         first_line = line
+                        continue
+                    if line in ["", "\x00", " "]: # line is empty...
                         continue
                     
                     tmp_object = wo(line, separator, data_names, time_format=time_format)
@@ -170,7 +173,6 @@ class weather_wrapper(object):
     
 
 ### Sonstige Methoden zur Datenverarbeitung ###
-from numpy import polyval, polyfit, array, isfinite, sort, flip
 
 def remove_indizes_from_list(value_list: list, rm_list):
     
@@ -231,6 +233,10 @@ def get_conversion_function(current_unit: str, desired_unit: str):
     if current_unit=="m":
         if desired_unit=="mm":
             return lambda x: x * 1000.0
+        
+    if current_unit=="Hpa":
+        if desired_unit=="hpa": # to ensure compatibility for older versions
+            return lambda x: x
     
     print(f"Error: desired conversion ({current_unit}->{desired_unit}) not available, returning identity function!")
     return lambda x: x
@@ -248,11 +254,11 @@ def convert_to_std_units(values: list, first_line: str, separator=";"):
                       "TemperatureInside": "°C",
                       "HumidityOutside": "%",
                       "TemperatureOutside": "°C",
-                      "PressureAbsolute": "Hpa",
+                      "PressureAbsolute": "hpa",
                       "WindSpeed": "m/s",
                       "WindGustSpeed": "m/s",
                       "WindDirection": "Richtung",
-                      "PressureRelative": "Hpa",
+                      "PressureRelative": "hpa",
                       "DewPoint": "°C",
                       "WindChill": "°C",
                       "RainfallHourly": "mm",
