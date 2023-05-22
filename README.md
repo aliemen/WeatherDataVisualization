@@ -12,4 +12,4 @@ In a "fresh" python-installation, you can run the following commands to install 
 
 
 
-(also sorry for missing commentary...)
+(also sorry for missing commentary..)
